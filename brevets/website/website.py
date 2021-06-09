@@ -1,3 +1,4 @@
+import flask
 from flask import Flask, request, render_template, redirect, url_for, flash, abort
 from passlib.apps import custom_app_context as pwd_context
 from urllib.parse import urlparse, urljoin
@@ -13,7 +14,7 @@ SECRET_KEY = 'SuperSecretSquirrel'
 secretSalt = 'SomeSalt'
 
 app = Flask(__name__)
-app.secret_key = "and the cats in the cradle and the silver spoon"
+app.secret_key = "SuperSecretKey"
 
 app.config.from_object(__name__)
 
@@ -33,7 +34,7 @@ login_manager.needs_refresh_message_category = "info"
 
 @login_manager.user_loader
 def load_user(id):
-    return User[int(id)]
+    return User(id, flask.session.get("name"), flask.session.get("token"))
 
 
 login_manager.init_app(app)
@@ -97,7 +98,9 @@ def login():
         if r.status_code == 200:
             newUser = User(response["id"], username, response["token"])
             remember = request.form.get("remember", "false") == "true"
-            
+            flask.session["id"] = response["id"]
+            flask.session["name"] = username
+            flask.session["token"] = response["token"]
             if login_user(newUser, remember=remember):
                 flash("Logged in!")
                 flash("I'll remember you") if remember else None

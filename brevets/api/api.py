@@ -53,13 +53,14 @@ class token(Resource):
         app.logger.debug("USERNAME IN API", username)
         app.logger.debug("PASSWORD IN API", request.args.get('password', default = "None", type=str))
 
-        password = pwd_context.encrypt(request.args.get('password', default = "None", type=str))
+        password = request.args.get('password', default = "None", type=str)
         findUser = user.users.find_one({"username": username})
         if (not findUser):
             return {"message": "No user matching that user name found!"}, 401
         else:
             if (verify_password(password, findUser["password"])):
                 token = generate_auth_token(username)
+                app.logger.debug("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX TOKEN", str(token))
                 return {"message": "success", "token":str(token), "valid":600, "id": str(findUser["_id"])}, 200  
             else:
                 return {"message": "Password does not match the one on record!"}, 401

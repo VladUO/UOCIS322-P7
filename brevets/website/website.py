@@ -89,8 +89,7 @@ def login():
     if form.validate_on_submit() and request.method == "POST" and "username" in request.form and "password" in request.form:
         username = request.form["username"]
         password = request.form["password"]
-        app.logger.debug("USERNAME IN WEBSITE", username)
-        app.logger.debug("PASSWORD IN WEBSITE", password)
+        
         password = pwd_context.using(salt = secretSalt).encrypt(password)
         r = requests.get('http://restapi:5000/token/' + '?username=' +  username + '&password=' + password)
         response = r.json()
@@ -98,7 +97,6 @@ def login():
         if r.status_code == 200:
             newUser = User(response["id"], username, response["token"])
             remember = request.form.get("remember", "false") == "true"
-            flask.session["id"] = response["id"]
             flask.session["name"] = username
             flask.session["token"] = response["token"]
             if login_user(newUser, remember=remember):
@@ -111,7 +109,7 @@ def login():
             else:
                 flash("Sorry, but you could not log in.")
         else:
-            flash(u"Invalid username.")
+            flash(u"Invalid username or password.")
     return render_template("login.html", form=form)
 
 @app.route("/register", methods=["GET", "POST"])
@@ -120,9 +118,7 @@ def register():
     if form.validate_on_submit() and request.method == "POST" and "username" in request.form and "password" in request.form:
         username = request.form["username"]
         password = request.form["password"]
-        app.logger.debug("USERNAME IN WEBSITE", username)
-        app.logger.debug("PASSWORD IN WEBSITE", password)
-       
+               
         password = pwd_context.using(salt= secretSalt).encrypt(password)
         r = requests.post('http://restapi:5000/register/', {'username': username, 'password':  password})
         app.logger.debug("RESPONSE FROM API REGISTRATION", r)
@@ -143,6 +139,7 @@ def logout():
     
 
 @app.route('/listAll',  methods = ["POST"])
+@login_required
 def listAll():
     # getting format and k values out
     format = request.form.get("format")
@@ -156,6 +153,7 @@ def listAll():
     return r.text
 
 @app.route("/listOpenOnly",  methods = ["POST"])
+@login_required
 def listOpenOnly():
     # getting format and k values out
     format = request.form.get("format")
@@ -169,6 +167,7 @@ def listOpenOnly():
     return r.text
 
 @app.route("/listCloseOnly",  methods = ["POST"])
+@login_required
 def listCloseOnly():
     # getting format and k values out
     format = request.form.get("format")

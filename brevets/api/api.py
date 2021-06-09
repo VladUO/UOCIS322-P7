@@ -30,38 +30,35 @@ SECRET_KEY = 'SuperSecretSquirrel'
 class register(Resource): #has to be a POST
     def post(self):
         # hash the password, insert usename and hashed pword into the database
-        app.logger.debug("XXXX ENTERED USER REGISTRATION XXXX")
+        app.logger.debug("ENTERED USER REGISTRATION")
 
         username = request.form.get('username', default = "Default", type=str)
         password = pwd_context.encrypt(request.form.get('password', default = "None", type=str))
-        app.logger.debug("USERNAME IN API", username)
-        app.logger.debug("PASSWORD IN API", (request.form.get('password', default = "None", type=str)))
-        
+       
         findUser = user.users.find_one({"username": username})
         if (findUser):
-            return {"message": "A user with that name already exists, please pick another user name."}, 400
+            return {"message": "<h1>A user with that name already exists, please pick another user name.</h1>"}, 400
         else:
             user.users.insert({"username": username, "password": password})
-            return {"message": "Registration success!"}, 201
+            return {"message": "<H1>Registration success!</h1>"}, 201
         
 
 class token(Resource):
     def get(self):
         # hash the password, compare to database, seturn error if not in there, token otherwise
-        app.logger.debug("XXXX ENTERED USER LOGIN XXXX")
+        app.logger.debug("ENTERED USER LOGIN")
+        
         username = request.args.get('username', default = "None", type=str)
-        app.logger.debug("USERNAME IN API", username)
-        app.logger.debug("PASSWORD IN API", request.args.get('password', default = "None", type=str))
-
         password = request.args.get('password', default = "None", type=str)
+       
         findUser = user.users.find_one({"username": username})
         if (not findUser):
             return {"message": "No user matching that user name found!"}, 401
         else:
             if (verify_password(password, findUser["password"])):
-                token = generate_auth_token(username)
-                app.logger.debug("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX TOKEN", str(token))
-                return {"message": "success", "token":str(token), "valid":600, "id": str(findUser["_id"])}, 200  
+                token = generate_auth_token(username).decode('utf-8')
+                # app.logger.debug("XXXXXXXXXXXXXXXXXX TOKEN IN API", str(token))
+                return {"message": "success", "token":token, "valid":10, "id": str(findUser["_id"])}, 200  
             else:
                 return {"message": "Password does not match the one on record!"}, 401
 
@@ -72,7 +69,7 @@ def hash_password(password):
 def verify_password(password, hashVal):
     return pwd_context.verify(password, hashVal)
 
-def generate_auth_token(username, expiration=600):
+def generate_auth_token(username, expiration=10):
     s = Serializer(SECRET_KEY, expires_in=expiration)
     return s.dumps({"username": username})
 
@@ -82,10 +79,10 @@ def verify_auth_token(token):
     try:
         data = s.loads(token)
     except SignatureExpired:
-        return "Expired token!"    # valid token, but expired
+        return False, "Expired token!"    # valid token, but expired
     except BadSignature:
-        return "Invalid token!"    # invalid token
-    return True
+        return False, "Invalid token!"    # invalid token
+    return True, "success"
 
 # class for listing all times
 class listAll(Resource):
@@ -93,13 +90,12 @@ class listAll(Resource):
         app.logger.debug("ENTERED listAll in API")
         app.logger.debug(format)  # checking format
 
-        if format == None:
-            format = "json"
-
         # pulling out the k value and checking it
         k = request.args.get('top', default = 0, type=int)
         token = request.args.get('token')
-        if verify_auth_token(token):
+        verified, message = verify_auth_token(token)
+        app.logger.debug("VERIFIED", verified)
+        if verified:
             app.logger.debug(k)
 
             # pulling out unnecessary items from the list and cleaning the list    
@@ -115,7 +111,7 @@ class listAll(Resource):
             else:
                 return "ERROR"
         else:
-            return {"Message": "Invalid token"}, 401             
+            return message, 401             
 
 # class for listing open times only
 class listOpenOnly(Resource):
@@ -128,7 +124,8 @@ class listOpenOnly(Resource):
         app.logger.debug(k)
 
         token = request.args.get('token')
-        if verify_auth_token(token):
+        verified, message = verify_auth_token(token)
+        if verified:
             # pulling out unnecessary items from the list and cleaning the list  
             data = list(db.database.find({}, {'_id': 0, 'BrevetDistance':0, 'StartTime':0, 'Location': 0, 'Km':0, 'Miles':0, 'Close':0}))
             data.remove({})
@@ -142,7 +139,7 @@ class listOpenOnly(Resource):
             else:
                 return "ERROR" 
         else:
-            return {"Message": "Invalid token"}, 401     
+            return message, 401     
 
 
 # class for listing close times only
@@ -156,7 +153,8 @@ class listCloseOnly(Resource):
         app.logger.debug(k)
 
         token = request.args.get('token')
-        if verify_auth_token(token):
+        verified, message = verify_auth_token(token)
+        if verified:
             # pulling out unnecessary items from the list and clearning the list  
             data = list(db.database.find({}, {'_id': 0, 'BrevetDistance':0, 'StartTime':0, 'Location': 0, 'Km':0, 'Miles':0, 'Open':0}))
             data.remove({})
@@ -170,7 +168,7 @@ class listCloseOnly(Resource):
             else:
                 return "ERROR" 
         else:
-            return {"Message": "Invalid token"}, 401        
+            return message, 401        
 
 # support function for converting to JSON format
 def toJson(k, data):

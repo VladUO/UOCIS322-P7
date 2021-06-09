@@ -15,7 +15,22 @@ class LoginForm(Form):
         validators.Length(min=2, max=25,
                           message=u"Huh, little too short for a username."),
         validators.InputRequired(u"Forget something?")])
+    password = StringField('Password', [
+        validators.Length(min=2, max=25,
+                          message=u"Huh, little too short for a username."),
+        validators.InputRequired(u"Forget something?")])
     remember = BooleanField('Remember me')
+
+class RegisterForm(Form):
+    username = StringField('Username', [
+        validators.Length(min=2, max=25,
+                          message=u"Cant register that name."),
+        validators.InputRequired(u"Cant register an empty slot")])
+    password = StringField('Password', [
+        validators.Length(min=2, max=25,
+                          message=u"Cant register a password this short."),
+        validators.InputRequired(u"Forget something?")])
+        
 
 
 def is_safe_url(target):
@@ -95,8 +110,9 @@ def secret():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     form = LoginForm()
-    if form.validate_on_submit() and request.method == "POST" and "username" in request.form:
+    if form.validate_on_submit() and request.method == "POST" and "username" in request.form and "password" in request.form:
         username = request.form["username"]
+        password = request.form["password"]
         if username in USER_NAMES:
             remember = request.form.get("remember", "false") == "true"
             if login_user(USER_NAMES[username], remember=remember):
@@ -112,6 +128,26 @@ def login():
             flash(u"Invalid username.")
     return render_template("login.html", form=form)
 
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    form = RegisterForm()
+    if form.validate_on_submit() and request.method == "POST" and "username" in request.form and "password" in request.form:
+        username = request.form["username"]
+        password = request.form["password"]
+        if username in USER_NAMES:
+            remember = request.form.get("remember", "false") == "true"
+            if login_user(USER_NAMES[username], remember=remember):
+                flash("Logged in!")
+                flash("I'll remember you") if remember else None
+                next = request.args.get("next")
+                if not is_safe_url(next):
+                    abort(400)
+                return redirect(next or url_for('index'))
+            else:
+                flash("Sorry, but you could not log in.")
+        else:
+            flash(u"Invalid username.")
+    return render_template("register.html", form=form)
 
 @app.route("/logout")
 @login_required

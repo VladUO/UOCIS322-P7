@@ -12,6 +12,7 @@ from itsdangerous import (TimedJSONWebSignatureSerializer \
                                   SignatureExpired)
 
 from passlib.apps import custom_app_context as pwd_context
+from passlib.hash import sha256_crypt as pwd_context
 
 from pymongo import MongoClient
 
@@ -31,16 +32,16 @@ class register(Resource): #has to be a POST
         # hash the password, insert usename and hashed pword into the database
         app.logger.debug("XXXX ENTERED USER REGISTRATION XXXX")
 
-        username = request.args.get('username', default = "None", type=str)
-        password = pwd_context.encrypt(request.args.get('password', default = "None", type=str))
+        username = request.form.get('username', default = "Default", type=str)
+        password = pwd_context.encrypt(request.form.get('password', default = "None", type=str))
         app.logger.debug("USERNAME IN API", username)
-        app.logger.debug("PASSWORD IN API", (request.args.get('password', default = "None", type=str)))
+        app.logger.debug("PASSWORD IN API", (request.form.get('password', default = "None", type=str)))
         
-        findUser = user.users.find_one({"Username": username})
+        findUser = user.users.find_one({"username": username})
         if (findUser):
             return {"message": "A user with that name already exists, please pick another user name."}, 400
         else:
-            user.users.insert({"Username": username, "Password": password})
+            user.users.insert({"username": username, "password": password})
             return {"message": "Registration success!"}, 201
         
 
@@ -48,16 +49,16 @@ class token(Resource):
     def get(self):
         # hash the password, compare to database, seturn error if not in there, token otherwise
         app.logger.debug("XXXX ENTERED USER LOGIN XXXX")
-        username = request.form.get('username', default = "None", type=str)
+        username = request.args.get('username', default = "None", type=str)
         app.logger.debug("USERNAME IN API", username)
-        app.logger.debug("PASSWORD IN API", request.form.get('password', default = "None", type=str))
+        app.logger.debug("PASSWORD IN API", request.args.get('password', default = "None", type=str))
 
-        password = pwd_context.encrypt(request.form.get('password', default = "None", type=str))
-        findUser = user.users.find_one({"Username": username})
+        password = pwd_context.encrypt(request.args.get('password', default = "None", type=str))
+        findUser = user.users.find_one({"username": username})
         if (not findUser):
             return {"message": "No user matching that user name found!"}, 401
         else:
-            if (verify_password(password, findUser["Password"])):
+            if (verify_password(password, findUser["password"])):
                 token = generate_auth_token(username)
                 return {"message": "success", "token":str(token), "valid":600, "id": str(findUser["_id"])}, 200  
             else:
@@ -211,8 +212,8 @@ def toCSV(k, data):
 
 # # Create routes
 # # Another way, without decorators
-api.add_resource(register, '/register', '/register/<string:format>')
-api.add_resource(token, '/token', '/token/<string:format>', )
+api.add_resource(register, '/register', '/register/')
+api.add_resource(token, '/token', '/token/', )
 api.add_resource(listAll, '/listAll', '/listAll/<string:format>')
 api.add_resource(listOpenOnly, '/listOpenOnly', '/listOpenOnly/<string:format>')
 api.add_resource(listCloseOnly, '/listCloseOnly', '/listCloseOnly/<string:format>')

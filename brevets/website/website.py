@@ -7,9 +7,10 @@ from flask_login import (LoginManager, current_user, login_required,
                          confirm_login, fresh_login_required)
 from flask_wtf import FlaskForm as Form
 from wtforms import BooleanField, StringField, validators
-
+from passlib.hash import sha256_crypt as pwd_context
 
 SECRET_KEY = 'SuperSecretSquirrel'
+secretSalt = 'SomeSalt'
 
 app = Flask(__name__)
 app.secret_key = "and the cats in the cradle and the silver spoon"
@@ -69,6 +70,7 @@ def hash_password(password):
     return pwd_context.encrypt(password)
 
 @app.route("/")
+@login_required
 def index():
     return render_template("index.html")
 
@@ -88,9 +90,10 @@ def login():
         password = request.form["password"]
         app.logger.debug("USERNAME IN WEBSITE", username)
         app.logger.debug("PASSWORD IN WEBSITE", password)
-        password = hash_password(password)
-        r = requests.get('http://restapi:5000/token')
+        password = pwd_context.using(salt = secretSalt).encrypt(password)
+        r = requests.get('http://restapi:5000/token/' + '?username=' +  username + '&password=' + password)
         response = r.json()
+        app.logger.debug("RESPONSE FOR LOGIN", response)
         if r.status_code == 200:
             newUser = User(response["id"], username, response["token"])
             remember = request.form.get("remember", "false") == "true"
@@ -117,16 +120,14 @@ def register():
         app.logger.debug("USERNAME IN WEBSITE", username)
         app.logger.debug("PASSWORD IN WEBSITE", password)
        
-        password = hash_password(password)
-        r = requests.post('http://restapi:5000/register' + "/" + "?username=" +  username + "&password=" + password)
+        password = pwd_context.using(salt= secretSalt).encrypt(password)
+        r = requests.post('http://restapi:5000/register/', {'username': username, 'password':  password})
         app.logger.debug("RESPONSE FROM API REGISTRATION", r)
-       
+        response = r.json()
         if r.status_code == 201:
-            response = r.json()
-            newUser = User(response["id"], username, response["token"])
-            return "Registration was successful!"
+            return response['message']
         else:
-            return "REGISTRATION ERROR"
+            return response['message']
     return render_template("register.html", form=form)
 
 

@@ -161,7 +161,7 @@ def listAll():
     return r.text
 
 @app.route("/listOpenOnly",  methods = ["POST"])
-# @login_required
+@login_required
 def listOpenOnly():
     # getting format and k values out
     format = request.form.get("format")

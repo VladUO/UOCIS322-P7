@@ -18,8 +18,8 @@ services:
         command: python -u api.py
         volumes:
             - ./api:/api/
-        ports:
-            - "9752:5000"
+        # ports:
+        #     - "9752:5000"
         depends_on:
             - ourdb
         environment: 

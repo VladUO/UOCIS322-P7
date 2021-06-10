@@ -36,6 +36,9 @@ login_manager.needs_refresh_message_category = "info"
 def load_user(id):
     return User(id, flask.session.get("name"), flask.session.get("token"))
 
+# @login_manager.unauthorized_handler
+# def unauthorized_handler():
+#     return redirect(url_for("base"))
 
 login_manager.init_app(app)
 
@@ -150,10 +153,15 @@ def listAll():
 
     # formatting and sending a request to the api.py using requests
     r = requests.get('http://restapi:5000/listAll' + "/" + format + "?top=" + k + "&token=" + current_user.token)
+    app.logger.debug("RESPONSE TEXT", r.text)
+    if r.text == '"Expired token!"\n' or r.text == '"Invalid token!"\n':
+        logout_user()
+        flash("Logged out.")
+        return redirect(url_for("index"))
     return r.text
 
 @app.route("/listOpenOnly",  methods = ["POST"])
-@login_required
+# @login_required
 def listOpenOnly():
     # getting format and k values out
     format = request.form.get("format")
@@ -164,6 +172,10 @@ def listOpenOnly():
 
     # formatting and sending a request to the api.py using requests
     r = requests.get('http://restapi:5000/listOpenOnly' + "/" + format + "?top=" + k + "&token=" + current_user.token)
+    if r.text == '"Expired token!"\n' or r.text == '"Invalid token!"\n':
+        logout_user()
+        flash("Logged out.")
+        return redirect(url_for("index"))
     return r.text
 
 @app.route("/listCloseOnly",  methods = ["POST"])
@@ -178,6 +190,10 @@ def listCloseOnly():
 
     # formatting and sending a request to the api.py using requests
     r = requests.get('http://restapi:5000/listCloseOnly' + "/" + format + "?top=" + k + "&token=" + current_user.token)    
+    if r.text == '"Expired token!"\n' or r.text == '"Invalid token!"\n':
+        logout_user()
+        flash("Logged out.")
+        return redirect(url_for("index"))
     return r.text
 
 def is_safe_url(target):
@@ -188,8 +204,10 @@ def is_safe_url(target):
     test_url = urlparse(urljoin(request.host_url, target))
     return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
 
-
-
+def loggedOut():
+    app.logger.debug("ENTERED LOGOUT")
+    return flask.render_template("index.html")
+       
 
 
 if __name__ == '__main__':

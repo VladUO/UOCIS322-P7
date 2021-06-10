@@ -57,7 +57,7 @@ class token(Resource):
         else:
             if (verify_password(password, findUser["password"])):
                 token = generate_auth_token(username).decode('utf-8')
-                # app.logger.debug("XXXXXXXXXXXXXXXXXX TOKEN IN API", str(token))
+               
                 return {"message": "success", "token":token, "valid":10, "id": str(findUser["_id"])}, 200  
             else:
                 return {"message": "Password does not match the one on record!"}, 401
@@ -94,7 +94,7 @@ class listAll(Resource):
         k = request.args.get('top', default = 0, type=int)
         token = request.args.get('token')
         verified, message = verify_auth_token(token)
-        app.logger.debug("VERIFIED", verified)
+        
         if verified:
             app.logger.debug(k)
 
